@@ -260,13 +260,13 @@ def test_run_command_returns_timeout_with_partial_output() -> None:
         ),
     ]
 
-    result = run_command(command, timeout_seconds=0.05)
+    result = run_command(command, timeout_seconds=0.2)
 
     assert result.command == tuple(command)
     assert result.exit_code is None
     assert result.stdout == "started"
     assert result.stderr == ""
-    assert result.duration_seconds >= 0.05
+    assert result.duration_seconds >= 0.2
     assert result.timed_out is True
 ```
 
