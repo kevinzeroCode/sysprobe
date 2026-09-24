@@ -1,5 +1,7 @@
 import sys
 
+import pytest
+
 from sysprobe.command_runner import run_command
 
 
@@ -40,15 +42,27 @@ def test_run_command_returns_timeout_with_partial_output() -> None:
             "import sys, time; "
             "sys.stdout.write('started'); "
             "sys.stdout.flush(); "
-            "time.sleep(1)"
+            "time.sleep(5)"
         ),
     ]
 
-    result = run_command(command, timeout_seconds=0.2)
+    # One second leaves startup margin on Windows and CI while still proving
+    # that the five-second child is terminated by the runner's deadline.
+    result = run_command(command, timeout_seconds=1.0)
 
     assert result.command == tuple(command)
     assert result.exit_code is None
     assert result.stdout == "started"
     assert result.stderr == ""
-    assert result.duration_seconds >= 0.2
+    assert result.duration_seconds >= 1.0
     assert result.timed_out is True
+
+
+def test_run_command_rejects_a_string_command() -> None:
+    with pytest.raises(ValueError, match="non-empty sequence of arguments"):
+        run_command("echo hello")
+
+
+def test_run_command_rejects_an_empty_command() -> None:
+    with pytest.raises(ValueError, match="non-empty sequence of arguments"):
+        run_command([])

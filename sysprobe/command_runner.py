@@ -22,6 +22,9 @@ def run_command(
 ) -> CommandResult:
     """Run one local command and capture its observable result."""
 
+    if isinstance(command, (str, bytes)) or not command:
+        raise ValueError("command must be a non-empty sequence of arguments")
+
     recorded_command = tuple(command)
     started_at = time.perf_counter()
 
