@@ -18,7 +18,7 @@ def run_command(
         recorded_command,
         capture_output=True,
         text=True,
-        check=True,
+        check=False,
         timeout=timeout_seconds,
     )
     duration_seconds = time.perf_counter() - started_at
