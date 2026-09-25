@@ -1,3 +1,5 @@
+import locale
+import subprocess
 import sys
 
 import pytest
@@ -55,6 +57,29 @@ def test_run_command_returns_timeout_with_partial_output() -> None:
     assert result.stdout == "started"
     assert result.stderr == ""
     assert result.duration_seconds >= 1.0
+    assert result.timed_out is True
+
+
+def test_run_command_decodes_timeout_output_using_preferred_encoding(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(locale, "getpreferredencoding", lambda _setlocale: "cp950")
+
+    def raise_timeout(*_args: object, **_kwargs: object) -> None:
+        raise subprocess.TimeoutExpired(
+            cmd=("diagnostic",),
+            timeout=1.0,
+            output="測試".encode("cp950"),
+            stderr=b"",
+        )
+
+    monkeypatch.setattr(subprocess, "run", raise_timeout)
+
+    result = run_command(["diagnostic"], timeout_seconds=1.0)
+
+    assert result.stdout == "測試"
+    assert result.stderr == ""
+    assert result.exit_code is None
     assert result.timed_out is True
 
 
