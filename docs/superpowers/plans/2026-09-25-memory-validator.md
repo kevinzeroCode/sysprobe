@@ -385,7 +385,10 @@ Append:
             "MemTotal must be greater than zero",
         ),
         (
-            MEMINFO_OUTPUT.replace("6000000 kB", "17000000 kB"),
+            MEMINFO_OUTPUT.replace(
+                "MemAvailable:    6000000 kB",
+                "MemAvailable:   17000000 kB",
+            ),
             "MemAvailable must be between zero and MemTotal",
         ),
     ],
