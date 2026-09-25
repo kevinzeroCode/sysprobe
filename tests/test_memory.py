@@ -178,3 +178,47 @@ def test_validate_memory_returns_fail_for_malformed_output() -> None:
     assert result.reason == "Could not parse memory metrics from /proc/meminfo"
     assert result.metrics is None
     assert result.command_result is command_result
+
+
+def test_validate_memory_returns_fail_for_timeout() -> None:
+    command_result = make_command_result(
+        stdout="partial output",
+        exit_code=None,
+        timed_out=True,
+    )
+
+    result = validate_memory(command_executor=lambda _command: command_result)
+
+    assert result.passed is False
+    assert result.reason == "Memory check timed out"
+    assert result.metrics is None
+    assert result.command_result is command_result
+
+
+def test_validate_memory_returns_fail_for_nonzero_exit() -> None:
+    command_result = make_command_result(
+        stdout="",
+        stderr="cat: /proc/meminfo: Permission denied\n",
+        exit_code=1,
+    )
+
+    result = validate_memory(command_executor=lambda _command: command_result)
+
+    assert result.passed is False
+    assert result.reason == "cat /proc/meminfo failed with exit code 1"
+    assert result.metrics is None
+    assert result.command_result is command_result
+
+
+@pytest.mark.parametrize("threshold", [0, 101])
+def test_validate_memory_rejects_threshold_outside_percentage_range(
+    threshold: int,
+) -> None:
+    def unexpected_runner(_command: Sequence[str]) -> CommandResult:
+        raise AssertionError("invalid configuration must fail before execution")
+
+    with pytest.raises(
+        ValueError,
+        match="threshold must be an integer from 1 to 100",
+    ):
+        validate_memory(threshold=threshold, command_executor=unexpected_runner)

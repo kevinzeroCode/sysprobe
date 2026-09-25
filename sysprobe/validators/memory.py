@@ -98,7 +98,35 @@ def validate_memory(
 ) -> MemoryValidationResult:
     """Check Linux available-memory usage against a percentage threshold."""
 
+    if (
+        isinstance(threshold, bool)
+        or not isinstance(threshold, int)
+        or not 1 <= threshold <= 100
+    ):
+        raise ValueError("threshold must be an integer from 1 to 100")
+
     command_result = command_executor(["cat", "/proc/meminfo"])
+    if command_result.timed_out:
+        return MemoryValidationResult(
+            passed=False,
+            reason="Memory check timed out",
+            metrics=None,
+            threshold_percent=threshold,
+            command_result=command_result,
+        )
+
+    if command_result.exit_code != 0:
+        return MemoryValidationResult(
+            passed=False,
+            reason=(
+                "cat /proc/meminfo failed with exit code "
+                f"{command_result.exit_code}"
+            ),
+            metrics=None,
+            threshold_percent=threshold,
+            command_result=command_result,
+        )
+
     try:
         metrics = parse_meminfo(command_result.stdout)
     except ValueError:
