@@ -1,8 +1,8 @@
 # SysProbe
 
 SysProbe is a learning-focused Linux validation framework. Day 1 builds the
-local command-execution boundary that later CPU, memory, disk, network, and
-service validators will share.
+local command-execution boundary. Day 2 adds the first policy layer: a root
+filesystem disk validator with an explicit PASS/FAIL threshold.
 
 ## Day 1 behavior
 
@@ -15,6 +15,31 @@ service validators will share.
 
 The runner records what happened. Future validators decide whether those facts
 mean PASS or FAIL.
+
+## Day 2 behavior
+
+`validate_disk` runs `df -P /` on Linux, extracts the root-filesystem usage
+percentage, and compares it with a configurable threshold. The default is 90%.
+
+```python
+from sysprobe.validators.disk import validate_disk
+
+result = validate_disk()
+
+print("PASS" if result.passed else "FAIL")
+print(result.reason)
+```
+
+The returned result keeps the original `CommandResult`, so failures retain
+stdout, stderr, exit code, duration, and timeout evidence. Running the real
+validator requires Linux, while its deterministic unit tests run on Windows.
+
+Run only the Day 2 tests:
+
+```powershell
+$env:PYTEST_DISABLE_PLUGIN_AUTOLOAD='1'
+python -m pytest tests/test_disk.py -v
+```
 
 ## Requirements
 
