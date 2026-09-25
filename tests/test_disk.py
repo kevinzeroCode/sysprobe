@@ -70,3 +70,60 @@ def test_validate_disk_applies_threshold_rule(
         threshold_percent=threshold,
         command_result=command_result,
     )
+
+
+def test_validate_disk_returns_fail_for_malformed_output() -> None:
+    command_result = make_command_result(stdout="not df output\n")
+
+    result = validate_disk(
+        command_executor=lambda _command: command_result,
+    )
+
+    assert result.passed is False
+    assert result.reason == "Could not parse disk usage from df output"
+    assert result.usage_percent is None
+    assert result.command_result is command_result
+
+
+def test_validate_disk_returns_fail_for_timeout() -> None:
+    command_result = make_command_result(
+        stdout="partial output",
+        exit_code=None,
+        timed_out=True,
+    )
+
+    result = validate_disk(command_executor=lambda _command: command_result)
+
+    assert result.passed is False
+    assert result.reason == "Disk check timed out"
+    assert result.usage_percent is None
+    assert result.command_result is command_result
+
+
+def test_validate_disk_returns_fail_for_nonzero_exit() -> None:
+    command_result = make_command_result(
+        stdout="",
+        stderr="df: /: Permission denied\n",
+        exit_code=1,
+    )
+
+    result = validate_disk(command_executor=lambda _command: command_result)
+
+    assert result.passed is False
+    assert result.reason == "df command failed with exit code 1"
+    assert result.usage_percent is None
+    assert result.command_result is command_result
+
+
+@pytest.mark.parametrize("threshold", [0, 101])
+def test_validate_disk_rejects_threshold_outside_percentage_range(
+    threshold: int,
+) -> None:
+    def unexpected_runner(_command: Sequence[str]) -> CommandResult:
+        raise AssertionError("invalid configuration must fail before execution")
+
+    with pytest.raises(
+        ValueError,
+        match="threshold must be an integer from 1 to 100",
+    ):
+        validate_disk(threshold=threshold, command_executor=unexpected_runner)

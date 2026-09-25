@@ -45,8 +45,46 @@ def validate_disk(
 ) -> DiskValidationResult:
     """Check Linux root-filesystem usage against a percentage threshold."""
 
+    if (
+        isinstance(threshold, bool)
+        or not isinstance(threshold, int)
+        or not 1 <= threshold <= 100
+    ):
+        raise ValueError("threshold must be an integer from 1 to 100")
+
     command_result = command_executor(["df", "-P", "/"])
-    usage_percent = parse_disk_usage(command_result.stdout)
+    if command_result.timed_out:
+        return DiskValidationResult(
+            passed=False,
+            reason="Disk check timed out",
+            mount_point="/",
+            usage_percent=None,
+            threshold_percent=threshold,
+            command_result=command_result,
+        )
+
+    if command_result.exit_code != 0:
+        return DiskValidationResult(
+            passed=False,
+            reason=f"df command failed with exit code {command_result.exit_code}",
+            mount_point="/",
+            usage_percent=None,
+            threshold_percent=threshold,
+            command_result=command_result,
+        )
+
+    try:
+        usage_percent = parse_disk_usage(command_result.stdout)
+    except ValueError:
+        return DiskValidationResult(
+            passed=False,
+            reason="Could not parse disk usage from df output",
+            mount_point="/",
+            usage_percent=None,
+            threshold_percent=threshold,
+            command_result=command_result,
+        )
+
     passed = usage_percent < threshold
 
     if passed:
