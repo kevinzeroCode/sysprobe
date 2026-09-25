@@ -41,6 +41,10 @@ $env:PYTEST_DISABLE_PLUGIN_AUTOLOAD='1'
 python -m pytest tests/test_disk.py -v
 ```
 
+### Day 2 visual summary
+
+![Day 2 Disk Validator flow](docs/day2-disk-validator-summary.png)
+
 ## Requirements
 
 - Python 3.10 or newer
