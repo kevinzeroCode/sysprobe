@@ -135,3 +135,46 @@ def test_validate_memory_applies_available_memory_threshold(
     assert result.metrics.free_kb == free_kb
     assert result.metrics.available_kb == available_kb
     assert result.metrics.swap_free_kb == swap_free_kb
+
+
+@pytest.mark.parametrize(
+    ("output", "message"),
+    [
+        (
+            MEMINFO_OUTPUT.replace("MemAvailable", "MissingAvailable"),
+            "missing required memory fields",
+        ),
+        (
+            MEMINFO_OUTPUT.replace("16000000 kB", "16000000 MB"),
+            "memory values must use kB units",
+        ),
+        (
+            MEMINFO_OUTPUT.replace("16000000 kB", "0 kB"),
+            "MemTotal must be greater than zero",
+        ),
+        (
+            MEMINFO_OUTPUT.replace(
+                "MemAvailable:    6000000 kB",
+                "MemAvailable:   17000000 kB",
+            ),
+            "MemAvailable must be between zero and MemTotal",
+        ),
+    ],
+)
+def test_parse_meminfo_rejects_malformed_metrics(
+    output: str,
+    message: str,
+) -> None:
+    with pytest.raises(ValueError, match=message):
+        parse_meminfo(output)
+
+
+def test_validate_memory_returns_fail_for_malformed_output() -> None:
+    command_result = make_command_result(stdout="not meminfo output\n")
+
+    result = validate_memory(command_executor=lambda _command: command_result)
+
+    assert result.passed is False
+    assert result.reason == "Could not parse memory metrics from /proc/meminfo"
+    assert result.metrics is None
+    assert result.command_result is command_result

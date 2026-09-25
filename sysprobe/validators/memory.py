@@ -54,11 +54,28 @@ def parse_meminfo(output: str) -> MemoryMetrics:
         name, raw_value = line.split(":", maxsplit=1)
         if name not in wanted_fields:
             continue
-        value_text, _unit = raw_value.split()
+
+        parts = raw_value.split()
+        if len(parts) != 2:
+            raise ValueError("memory values must contain a number and kB unit")
+        value_text, unit = parts
+        if unit != "kB":
+            raise ValueError("memory values must use kB units")
+        if not value_text.isdigit():
+            raise ValueError("memory values must be non-negative integers")
         values[name] = int(value_text)
+
+    missing_fields = wanted_fields.difference(values)
+    if missing_fields:
+        raise ValueError("missing required memory fields")
 
     total_kb = values["MemTotal"]
     available_kb = values["MemAvailable"]
+    if total_kb <= 0:
+        raise ValueError("MemTotal must be greater than zero")
+    if not 0 <= available_kb <= total_kb:
+        raise ValueError("MemAvailable must be between zero and MemTotal")
+
     used_kb = total_kb - available_kb
 
     return MemoryMetrics(
@@ -82,7 +99,17 @@ def validate_memory(
     """Check Linux available-memory usage against a percentage threshold."""
 
     command_result = command_executor(["cat", "/proc/meminfo"])
-    metrics = parse_meminfo(command_result.stdout)
+    try:
+        metrics = parse_meminfo(command_result.stdout)
+    except ValueError:
+        return MemoryValidationResult(
+            passed=False,
+            reason="Could not parse memory metrics from /proc/meminfo",
+            metrics=None,
+            threshold_percent=threshold,
+            command_result=command_result,
+        )
+
     passed = metrics.usage_percent < threshold
     displayed_usage = f"{metrics.usage_percent:.1f}"
 
