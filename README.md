@@ -2,7 +2,8 @@
 
 SysProbe is a learning-focused Linux validation framework. Day 1 builds the
 local command-execution boundary. Day 2 adds the first policy layer: a root
-filesystem disk validator with an explicit PASS/FAIL threshold.
+filesystem disk validator with an explicit PASS/FAIL threshold. Day 3 adds a
+memory validator based on Linux available-memory semantics.
 
 ## Day 1 behavior
 
@@ -44,6 +45,34 @@ python -m pytest tests/test_disk.py -v
 ### Day 2 visual summary
 
 ![Day 2 Disk Validator flow](docs/day2-disk-validator-summary.png)
+
+## Day 3 behavior
+
+`validate_memory` runs `cat /proc/meminfo` on Linux and calculates RAM usage
+from `MemTotal - MemAvailable`. The default failure threshold is 90%.
+
+```python
+from sysprobe.validators.memory import validate_memory
+
+result = validate_memory()
+
+print("PASS" if result.passed else "FAIL")
+print(result.reason)
+```
+
+Linux may use otherwise idle RAM for reclaimable caches, so low `MemFree` does
+not by itself mean memory pressure. SysProbe uses `MemAvailable` for its
+decision. Swap totals are recorded for context but do not affect Day 3 status.
+
+Running the real validator requires Linux. Its deterministic tests run on
+Windows with representative `/proc/meminfo` samples.
+
+Run only the Day 3 tests:
+
+```powershell
+$env:PYTEST_DISABLE_PLUGIN_AUTOLOAD='1'
+python -m pytest tests/test_memory.py -v
+```
 
 ## Requirements
 
