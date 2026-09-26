@@ -74,6 +74,10 @@ $env:PYTEST_DISABLE_PLUGIN_AUTOLOAD='1'
 python -m pytest tests/test_memory.py -v
 ```
 
+### Day 3 visual summary
+
+![Day 3 Memory Validator flow](docs/day3-memory-validator-summary.svg)
+
 ## Requirements
 
 - Python 3.10 or newer

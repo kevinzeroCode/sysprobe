@@ -15,7 +15,7 @@
 - Create `sysprobe/validators/memory.py`: memory metrics, `/proc/meminfo` parser, result model, and validation policy.
 - Create `tests/test_memory.py`: parser, policy, failure-path, and configuration tests.
 - Modify `README.md`: Day 3 concepts, usage, and focused test command.
-- Create `docs/day3-memory-validator-summary.png`: colored beginner learning summary.
+- Create `docs/day3-memory-validator-summary.svg`: colored beginner learning summary.
 
 ### Task 1: Parse Valid `/proc/meminfo`
 
@@ -680,7 +680,7 @@ git commit -m "docs: explain Day 3 memory validation"
 ### Task 6: Create the Colored Learning Summary
 
 **Files:**
-- Create: `docs/day3-memory-validator-summary.png`
+- Create: `docs/day3-memory-validator-summary.svg`
 - Modify: `README.md`
 
 - [ ] **Step 1: Generate and inspect the infographic**
@@ -701,9 +701,11 @@ Text: concise Traditional Chinese labels with exact English field names
 Constraints: large readable type, accurate inequality usage < threshold is PASS and usage >= threshold is FAIL, no logo, no watermark, no clutter
 ```
 
-Inspect the image for readable labels, correct use of `MemAvailable`, swap's
-non-decision role, and the correct threshold inequalities. Save the selected
-asset as `docs/day3-memory-validator-summary.png`.
+Inspect the generated image for readable labels, correct use of `MemAvailable`,
+swap's non-decision role, and the correct threshold inequalities. Image
+generation repeatedly misspelled the exact command label, so preserve technical
+accuracy by implementing the final diagram as a deterministic SVG at
+`docs/day3-memory-validator-summary.svg`.
 
 - [ ] **Step 2: Link the image from README**
 
@@ -712,7 +714,7 @@ Add under the Day 3 section:
 ```markdown
 ### Day 3 visual summary
 
-![Day 3 Memory Validator flow](docs/day3-memory-validator-summary.png)
+![Day 3 Memory Validator flow](docs/day3-memory-validator-summary.svg)
 ```
 
 - [ ] **Step 3: Verify and commit the learning artifact**
@@ -720,7 +722,7 @@ Add under the Day 3 section:
 ```powershell
 git diff --check
 git status --short
-git add -- docs/day3-memory-validator-summary.png README.md
+git add -- docs/day3-memory-validator-summary.svg README.md docs/superpowers/plans/2026-09-25-memory-validator.md
 git commit -m "docs: add Day 3 visual summary"
 ```
 
@@ -757,7 +759,7 @@ Expected changed paths:
 
 ```text
 README.md
-docs/day3-memory-validator-summary.png
+docs/day3-memory-validator-summary.svg
 docs/superpowers/plans/2026-09-25-memory-validator.md
 sysprobe/validators/memory.py
 tests/test_memory.py
