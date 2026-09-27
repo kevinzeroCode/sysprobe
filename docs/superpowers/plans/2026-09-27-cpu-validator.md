@@ -145,21 +145,20 @@ behavior.
 
 - [ ] **Step 1: Add failing `nproc` parser tests**
 
-Update the import in `tests/test_cpu.py`:
-
-```python
-from sysprobe.validators.cpu import parse_cpu_count, parse_loadavg
-```
-
-Append:
+Append to `tests/test_cpu.py`. Keep the new import inside each test so pytest
+can collect the cases before `parse_cpu_count` exists:
 
 ```python
 def test_parse_cpu_count_reads_positive_integer() -> None:
+    from sysprobe.validators.cpu import parse_cpu_count
+
     assert parse_cpu_count("  8\n") == 8
 
 
 @pytest.mark.parametrize("output", ["", "0\n", "-1\n", "4.0\n", "4 8\n"])
 def test_parse_cpu_count_rejects_malformed_values(output: str) -> None:
+    from sysprobe.validators.cpu import parse_cpu_count
+
     with pytest.raises(
         ValueError,
         match="CPU count must be one positive integer",
@@ -177,7 +176,8 @@ python -m pytest tests/test_cpu.py -k cpu_count -v
 Purpose: `-k cpu_count` selects tests whose names contain `cpu_count`, keeping
 the feedback focused on the new parser.
 
-Expected: collection fails because `parse_cpu_count` does not exist.
+Expected: pytest collects 6 selected cases and they fail inside the tests
+because `parse_cpu_count` does not exist.
 
 - [ ] **Step 3: Add the minimal CPU-count parser**
 
