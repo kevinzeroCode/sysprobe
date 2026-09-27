@@ -22,3 +22,17 @@ def parse_loadavg(output: str) -> tuple[float, float, float]:
         raise ValueError("load averages must be finite non-negative numbers")
 
     return loads
+
+
+def parse_cpu_count(output: str) -> int:
+    """Parse the positive processing-unit count returned by `nproc`."""
+
+    fields = output.split()
+    if len(fields) != 1 or not fields[0].isdigit():
+        raise ValueError("CPU count must be one positive integer")
+
+    cpu_count = int(fields[0])
+    if cpu_count <= 0:
+        raise ValueError("CPU count must be one positive integer")
+
+    return cpu_count

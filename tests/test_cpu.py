@@ -38,3 +38,20 @@ def test_parse_loadavg_rejects_malformed_values(
 
     with pytest.raises(ValueError, match=message):
         parse_loadavg(output)
+
+
+def test_parse_cpu_count_reads_positive_integer() -> None:
+    from sysprobe.validators.cpu import parse_cpu_count
+
+    assert parse_cpu_count("  8\n") == 8
+
+
+@pytest.mark.parametrize("output", ["", "0\n", "-1\n", "4.0\n", "4 8\n"])
+def test_parse_cpu_count_rejects_malformed_values(output: str) -> None:
+    from sysprobe.validators.cpu import parse_cpu_count
+
+    with pytest.raises(
+        ValueError,
+        match="CPU count must be one positive integer",
+    ):
+        parse_cpu_count(output)
