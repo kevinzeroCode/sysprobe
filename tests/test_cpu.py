@@ -180,3 +180,91 @@ def test_validate_cpu_normalizes_one_minute_load(
         cpu_count_command_result=cpu_count_result,
     )
     assert calls == [LOAD_COMMAND, CPU_COUNT_COMMAND]
+
+
+@pytest.mark.parametrize(
+    ("load_result", "cpu_count_result", "expected_reason"),
+    [
+        (
+            make_command_result(
+                LOAD_COMMAND,
+                stdout="partial output",
+                exit_code=None,
+                timed_out=True,
+            ),
+            make_command_result(CPU_COUNT_COMMAND, stdout="4\n"),
+            "CPU check failed: load average command timed out",
+        ),
+        (
+            make_command_result(LOAD_COMMAND, exit_code=2),
+            make_command_result(CPU_COUNT_COMMAND, stdout="4\n"),
+            "CPU check failed: load average command failed with exit code 2",
+        ),
+        (
+            make_command_result(
+                LOAD_COMMAND,
+                stdout="1.0 0.5 0.2 1/10 123\n",
+            ),
+            make_command_result(
+                CPU_COUNT_COMMAND,
+                stdout="partial",
+                exit_code=None,
+                timed_out=True,
+            ),
+            "CPU check failed: nproc timed out",
+        ),
+        (
+            make_command_result(
+                LOAD_COMMAND,
+                stdout="1.0 0.5 0.2 1/10 123\n",
+            ),
+            make_command_result(CPU_COUNT_COMMAND, exit_code=1),
+            "CPU check failed: nproc failed with exit code 1",
+        ),
+        (
+            make_command_result(LOAD_COMMAND, stdout="not loadavg\n"),
+            make_command_result(CPU_COUNT_COMMAND, stdout="4\n"),
+            "CPU check failed: malformed /proc/loadavg output",
+        ),
+        (
+            make_command_result(
+                LOAD_COMMAND,
+                stdout="1.0 0.5 0.2 1/10 123\n",
+            ),
+            make_command_result(CPU_COUNT_COMMAND, stdout="zero\n"),
+            "CPU check failed: malformed nproc output",
+        ),
+    ],
+)
+def test_validate_cpu_reports_command_or_parse_failure(
+    load_result: CommandResult,
+    cpu_count_result: CommandResult,
+    expected_reason: str,
+) -> None:
+    executor, calls = make_executor(load_result, cpu_count_result)
+
+    result = validate_cpu(command_executor=executor)
+
+    assert result.passed is False
+    assert result.reason == expected_reason
+    assert result.metrics is None
+    assert result.load_command_result is load_result
+    assert result.cpu_count_command_result is cpu_count_result
+    assert calls == [LOAD_COMMAND, CPU_COUNT_COMMAND]
+
+
+def test_validate_cpu_reports_both_failures_in_stable_order() -> None:
+    load_result = make_command_result(LOAD_COMMAND, stdout="not loadavg\n")
+    cpu_count_result = make_command_result(CPU_COUNT_COMMAND, exit_code=1)
+    executor, calls = make_executor(load_result, cpu_count_result)
+
+    result = validate_cpu(command_executor=executor)
+
+    assert result.reason == (
+        "CPU check failed: malformed /proc/loadavg output; "
+        "nproc failed with exit code 1"
+    )
+    assert result.metrics is None
+    assert result.load_command_result is load_result
+    assert result.cpu_count_command_result is cpu_count_result
+    assert calls == [LOAD_COMMAND, CPU_COUNT_COMMAND]

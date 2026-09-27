@@ -69,6 +69,18 @@ class CpuValidationResult:
     cpu_count_command_result: CommandResult
 
 
+def _command_failure(
+    result: CommandResult,
+    *,
+    description: str,
+) -> str | None:
+    if result.timed_out:
+        return f"{description} timed out"
+    if result.exit_code != 0:
+        return f"{description} failed with exit code {result.exit_code}"
+    return None
+
+
 def validate_cpu(
     *,
     threshold: float = 1.0,
@@ -79,9 +91,47 @@ def validate_cpu(
     threshold_value = float(threshold)
     load_result = command_executor(["cat", "/proc/loadavg"])
     cpu_count_result = command_executor(["nproc"])
+    failures: list[str] = []
 
-    load_1m, load_5m, load_15m = parse_loadavg(load_result.stdout)
-    logical_cpu_count = parse_cpu_count(cpu_count_result.stdout)
+    loads: tuple[float, float, float] | None = None
+    load_failure = _command_failure(
+        load_result,
+        description="load average command",
+    )
+    if load_failure is not None:
+        failures.append(load_failure)
+    else:
+        try:
+            loads = parse_loadavg(load_result.stdout)
+        except ValueError:
+            failures.append("malformed /proc/loadavg output")
+
+    logical_cpu_count: int | None = None
+    cpu_count_failure = _command_failure(
+        cpu_count_result,
+        description="nproc",
+    )
+    if cpu_count_failure is not None:
+        failures.append(cpu_count_failure)
+    else:
+        try:
+            logical_cpu_count = parse_cpu_count(cpu_count_result.stdout)
+        except ValueError:
+            failures.append("malformed nproc output")
+
+    if failures:
+        return CpuValidationResult(
+            passed=False,
+            reason="CPU check failed: " + "; ".join(failures),
+            metrics=None,
+            threshold=threshold_value,
+            load_command_result=load_result,
+            cpu_count_command_result=cpu_count_result,
+        )
+
+    assert loads is not None
+    assert logical_cpu_count is not None
+    load_1m, load_5m, load_15m = loads
     normalized_load_1m = load_1m / logical_cpu_count
     passed = normalized_load_1m < threshold_value
 
