@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="800" viewBox="0 0 1400 800" role="img" aria-labelledby="title desc">
+  <title id="title">SysProbe Day 4 CPU Validator</title>
+  <desc id="desc">Two Linux commands provide load average and CPU count, which are normalized and compared with threshold 1.0.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#eff6ff"/>
+      <stop offset="1" stop-color="#faf5ff"/>
+    </linearGradient>
+    <filter id="shadow"><feDropShadow dx="0" dy="7" stdDeviation="7" flood-opacity="0.14"/></filter>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#475569"/></marker>
+    <style>
+      text{font-family:"Segoe UI","Microsoft JhengHei",sans-serif;fill:#0f172a}.title{font-size:36px;font-weight:700}.sub{font-size:18px;fill:#475569}.head{font-size:21px;font-weight:700}.body{font-size:16px}.code{font:700 17px Consolas,monospace}.card{stroke-width:2;filter:url(#shadow)}.arrow{stroke:#475569;stroke-width:4;fill:none;marker-end:url(#arrow)}
+    </style>
+  </defs>
+  <rect width="1400" height="800" fill="url(#bg)"/>
+  <text x="60" y="60" class="title">SysProbe Day 4｜CPU 負載檢查器</text>
+  <text x="60" y="94" class="sub">Load average 是系統工作壓力，不是 CPU 使用率百分比</text>
+  <rect class="card" x="60" y="150" width="270" height="150" rx="22" fill="#dbeafe" stroke="#60a5fa"/>
+  <text x="85" y="190" class="head">① 讀取 Load Average</text>
+  <text x="85" y="228" class="code">cat /proc/loadavg</text>
+  <text x="85" y="264" class="body">保留 1、5、15 分鐘數值</text>
+  <rect class="card" x="60" y="365" width="270" height="150" rx="22" fill="#ede9fe" stroke="#a78bfa"/>
+  <text x="85" y="405" class="head">② 讀取 CPU 數量</text>
+  <text x="85" y="443" class="code">nproc</text>
+  <text x="85" y="479" class="body">取得環境可用的 CPU 數量</text>
+  <path class="arrow" d="M330 225 C410 225 420 310 500 330"/>
+  <path class="arrow" d="M330 440 C410 440 420 355 500 340"/>
+  <rect class="card" x="515" y="240" width="390" height="200" rx="22" fill="#fef3c7" stroke="#f59e0b"/>
+  <text x="545" y="285" class="head">③ 正規化一分鐘負載</text>
+  <text x="545" y="333" class="code">normalized_load_1m =</text>
+  <text x="545" y="367" class="code">load_1m ÷ CPU count</text>
+  <text x="545" y="409" class="body">例：3.00 ÷ 4 = 0.75</text>
+  <path class="arrow" d="M905 340 L1000 340"/>
+  <rect class="card" x="1015" y="225" width="320" height="230" rx="22" fill="#fff7ed" stroke="#fb923c"/>
+  <text x="1045" y="270" class="head">④ 比較 threshold = 1.0</text>
+  <rect x="1045" y="303" width="260" height="55" rx="18" fill="#dcfce7"/>
+  <text x="1070" y="338" class="body" fill="#15803d">load &lt; 1.0 → PASS</text>
+  <rect x="1045" y="376" width="260" height="55" rx="18" fill="#fee2e2"/>
+  <text x="1070" y="411" class="body" fill="#b91c1c">load ≥ 1.0 → FAIL</text>
+  <rect class="card" x="60" y="590" width="600" height="145" rx="22" fill="#ffffff" stroke="#93c5fd"/>
+  <text x="90" y="632" class="head" fill="#1d4ed8">今天和昨天的差別</text>
+  <text x="90" y="672" class="body">Day 3：一條指令，計算記憶體可用量</text>
+  <text x="90" y="706" class="body">Day 4：兩條指令，必須用 CPU 數量解釋 Load</text>
+  <rect class="card" x="705" y="590" width="630" height="145" rx="22" fill="#fff1f2" stroke="#fb7185"/>
+  <text x="735" y="632" class="head" fill="#be123c">失敗仍保留證據</text>
+  <text x="735" y="672" class="body">timeout／非零 exit code／格式錯誤 → FAIL + reason</text>
+  <text x="735" y="706" class="body">兩份 CommandResult 都保留，方便往上排錯</text>
+</svg>

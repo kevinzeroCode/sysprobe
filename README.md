@@ -112,6 +112,10 @@ $env:PYTEST_DISABLE_PLUGIN_AUTOLOAD='1'
 python -m pytest tests/test_cpu.py -v
 ```
 
+### Day 4 visual summary
+
+![Day 4 CPU Validator flow](docs/day4-cpu-validator-summary.svg)
+
 ## Requirements
 
 - Python 3.10 or newer
