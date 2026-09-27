@@ -88,6 +88,14 @@ def validate_cpu(
 ) -> CpuValidationResult:
     """Check normalized Linux one-minute load against a threshold."""
 
+    if (
+        isinstance(threshold, bool)
+        or not isinstance(threshold, (int, float))
+        or not math.isfinite(threshold)
+        or threshold <= 0
+    ):
+        raise ValueError("threshold must be a finite number greater than zero")
+
     threshold_value = float(threshold)
     load_result = command_executor(["cat", "/proc/loadavg"])
     cpu_count_result = command_executor(["nproc"])

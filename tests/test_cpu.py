@@ -268,3 +268,21 @@ def test_validate_cpu_reports_both_failures_in_stable_order() -> None:
     assert result.load_command_result is load_result
     assert result.cpu_count_command_result is cpu_count_result
     assert calls == [LOAD_COMMAND, CPU_COUNT_COMMAND]
+
+
+@pytest.mark.parametrize(
+    "threshold",
+    [0, -0.1, float("nan"), float("inf"), True, "1.0"],
+)
+def test_validate_cpu_rejects_invalid_threshold(threshold: object) -> None:
+    def unexpected_runner(_command: Sequence[str]) -> CommandResult:
+        raise AssertionError("invalid configuration must fail before execution")
+
+    with pytest.raises(
+        ValueError,
+        match="threshold must be a finite number greater than zero",
+    ):
+        validate_cpu(
+            threshold=threshold,  # type: ignore[arg-type]
+            command_executor=unexpected_runner,
+        )
