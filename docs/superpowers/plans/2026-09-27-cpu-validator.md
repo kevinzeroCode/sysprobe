@@ -30,10 +30,10 @@ Create `tests/test_cpu.py`:
 ```python
 import pytest
 
-from sysprobe.validators.cpu import parse_loadavg
-
 
 def test_parse_loadavg_reads_three_time_windows() -> None:
+    from sysprobe.validators.cpu import parse_loadavg
+
     assert parse_loadavg("0.42 0.58 0.61 2/123 4567\n") == (
         0.42,
         0.58,
@@ -64,6 +64,8 @@ def test_parse_loadavg_rejects_malformed_values(
     output: str,
     message: str,
 ) -> None:
+    from sysprobe.validators.cpu import parse_loadavg
+
     with pytest.raises(ValueError, match=message):
         parse_loadavg(output)
 ```
@@ -77,9 +79,10 @@ python -m pytest tests/test_cpu.py -v
 
 Purpose: run only the new Day 4 module so the first failure is easy to read.
 
-Expected: test collection fails because `sysprobe.validators.cpu` does not yet
-exist. This proves the new tests are exercising missing Day 4 behavior rather
-than passing accidentally.
+Expected: pytest collects 6 cases and each fails inside the test with
+`ModuleNotFoundError` because `sysprobe.validators.cpu` does not yet exist.
+This proves the new tests are exercising missing Day 4 behavior rather than
+passing accidentally.
 
 - [ ] **Step 3: Add the minimal load parser**
 
