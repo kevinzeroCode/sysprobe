@@ -224,7 +224,8 @@ git commit -m "feat: parse available CPU count"
 
 - [ ] **Step 1: Add command helpers and failing decision tests**
 
-Replace the imports at the top of `tests/test_cpu.py` with:
+Add the collection imports at the top of `tests/test_cpu.py`. Keep the CPU
+names inside the new decision test until production defines them:
 
 ```python
 from collections.abc import Callable, Sequence
@@ -232,13 +233,6 @@ from collections.abc import Callable, Sequence
 import pytest
 
 from sysprobe.result import CommandResult
-from sysprobe.validators.cpu import (
-    CpuMetrics,
-    CpuValidationResult,
-    parse_cpu_count,
-    parse_loadavg,
-    validate_cpu,
-)
 ```
 
 Add below the imports:
@@ -342,6 +336,13 @@ def test_validate_cpu_normalizes_one_minute_load(
     expected_passed: bool,
     expected_reason: str,
 ) -> None:
+    from sysprobe.validators.cpu import (
+        CpuMetrics,
+        CpuValidationResult,
+        parse_loadavg,
+        validate_cpu,
+    )
+
     load_result = make_command_result(LOAD_COMMAND, stdout=load_output)
     cpu_count_result = make_command_result(
         CPU_COUNT_COMMAND,
@@ -381,8 +382,8 @@ python -m pytest tests/test_cpu.py::test_validate_cpu_normalizes_one_minute_load
 
 Purpose: isolate the new orchestration and policy test.
 
-Expected: collection fails because `CpuMetrics`, `CpuValidationResult`, and
-`validate_cpu` do not exist.
+Expected: pytest collects 4 cases and they fail inside the test because
+`CpuMetrics`, `CpuValidationResult`, and `validate_cpu` do not exist.
 
 - [ ] **Step 3: Add the result models and successful-path policy**
 
@@ -473,7 +474,22 @@ def validate_cpu(
     )
 ```
 
-- [ ] **Step 4: Run the focused and complete suites and verify GREEN**
+- [ ] **Step 4: Consolidate imports, then verify GREEN**
+
+After the production names exist, add this module-level import to
+`tests/test_cpu.py` and remove the function-local CPU imports:
+
+```python
+from sysprobe.validators.cpu import (
+    CpuMetrics,
+    CpuValidationResult,
+    parse_cpu_count,
+    parse_loadavg,
+    validate_cpu,
+)
+```
+
+Run:
 
 ```powershell
 $env:PYTEST_DISABLE_PLUGIN_AUTOLOAD='1'
