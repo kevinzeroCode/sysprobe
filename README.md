@@ -3,7 +3,8 @@
 SysProbe is a learning-focused Linux validation framework. Day 1 builds the
 local command-execution boundary. Day 2 adds the first policy layer: a root
 filesystem disk validator with an explicit PASS/FAIL threshold. Day 3 adds a
-memory validator based on Linux available-memory semantics.
+memory validator based on Linux available-memory semantics. Day 4 adds a CPU
+validator that normalizes Linux load average by available CPU count.
 
 ## Day 1 behavior
 
@@ -77,6 +78,39 @@ python -m pytest tests/test_memory.py -v
 ### Day 3 visual summary
 
 ![Day 3 Memory Validator flow](docs/day3-memory-validator-summary.svg)
+
+## Day 4 behavior
+
+`validate_cpu` runs `cat /proc/loadavg` and `nproc` on Linux. It divides the
+one-minute load average by the available CPU count, then compares that
+normalized value with a configurable threshold. The default is `1.0`.
+
+```python
+from sysprobe.validators.cpu import validate_cpu
+
+result = validate_cpu()
+
+print("PASS" if result.passed else "FAIL")
+print(result.reason)
+```
+
+Load average is not CPU utilization percentage. It includes runnable work and
+tasks waiting in uninterruptible sleep. The 5- and 15-minute values are kept
+for context, but only the 1-minute value decides Day 4 status.
+
+Unlike the Day 3 memory check, Day 4 needs two Linux commands. The result keeps
+both `CommandResult` records so command, timeout, exit-code, stdout, and stderr
+evidence remain available for debugging.
+
+The real commands require Linux. Deterministic tests run on Windows with
+representative `/proc/loadavg` and `nproc` output.
+
+Run only the Day 4 tests:
+
+```powershell
+$env:PYTEST_DISABLE_PLUGIN_AUTOLOAD='1'
+python -m pytest tests/test_cpu.py -v
+```
 
 ## Requirements
 
