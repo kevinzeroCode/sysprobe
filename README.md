@@ -4,7 +4,8 @@ SysProbe is a learning-focused Linux validation framework. Day 1 builds the
 local command-execution boundary. Day 2 adds the first policy layer: a root
 filesystem disk validator with an explicit PASS/FAIL threshold. Day 3 adds a
 memory validator based on Linux available-memory semantics. Day 4 adds a CPU
-validator that normalizes Linux load average by available CPU count.
+validator that normalizes Linux load average by available CPU count. Day 5
+adds a layered IPv4 network validator with an optional reachability check.
 
 ## Day 1 behavior
 
@@ -115,6 +116,51 @@ python -m pytest tests/test_cpu.py -v
 ### Day 4 visual summary
 
 ![Day 4 CPU Validator flow](docs/day4-cpu-validator-summary.svg)
+
+## Day 5 behavior
+
+`validate_network` checks three IPv4 layers on Linux:
+
+1. `ip -o -4 addr show scope global up` finds active, non-loopback interfaces
+   with a global IPv4 address.
+2. `ip -4 route show default` finds the route used for destinations outside the
+   local networks.
+3. `ping -4 -c 1 -W 2 <host>` runs only when the caller supplies `host`.
+
+```python
+from sysprobe.validators.network import validate_network
+
+local_result = validate_network()
+remote_result = validate_network(host="example.com")
+
+print("PASS" if local_result.passed else "FAIL")
+print(local_result.reason)
+print("PASS" if remote_result.passed else "FAIL")
+print(remote_result.reason)
+```
+
+Ping is optional because some healthy networks block ICMP replies. Without a
+host, PASS requires an active global IPv4 interface and a default IPv4 route.
+With a host, PASS additionally requires one successful ping reply.
+
+The result retains the interface, route, and optional ping `CommandResult`
+objects. A ping exit code of `1` means the host did not reply; timeouts and
+other nonzero exit codes are reported as execution failures. Host input is
+validated before commands run, and argument vectors avoid shell injection.
+
+The real commands require Linux. Deterministic unit tests run on Windows using
+representative command output and never contact the network.
+
+Run only the Day 5 tests:
+
+```powershell
+$env:PYTEST_DISABLE_PLUGIN_AUTOLOAD='1'
+python -m pytest tests/test_network.py -v
+```
+
+### Day 5 visual summary
+
+![Day 5 Network Validator flow](docs/day5-network-validator-summary.svg)
 
 ## Requirements
 

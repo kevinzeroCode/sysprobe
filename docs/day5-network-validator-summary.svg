@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="860" viewBox="0 0 1400 860" role="img" aria-labelledby="title desc">
+  <title id="title">SysProbe Day 5 Network Validator</title>
+  <desc id="desc">Three network layers check an active IPv4 interface, a default route, and an optional ping host before producing PASS or FAIL.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ecfeff"/>
+      <stop offset="1" stop-color="#f5f3ff"/>
+    </linearGradient>
+    <filter id="shadow"><feDropShadow dx="0" dy="7" stdDeviation="7" flood-opacity="0.14"/></filter>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#475569"/></marker>
+    <style>
+      text{font-family:"Segoe UI","Microsoft JhengHei",sans-serif;fill:#0f172a}.title{font-size:36px;font-weight:700}.sub{font-size:18px;fill:#475569}.head{font-size:22px;font-weight:700}.body{font-size:17px}.small{font-size:15px;fill:#475569}.code{font:700 15px Consolas,monospace}.card{stroke-width:2;filter:url(#shadow)}.arrow{stroke:#475569;stroke-width:4;fill:none;marker-end:url(#arrow)}
+    </style>
+  </defs>
+  <rect width="1400" height="860" fill="url(#bg)"/>
+  <text x="60" y="60" class="title">SysProbe Day 5：分層檢查 IPv4 網路</text>
+  <text x="60" y="94" class="sub">先確認自己的網路設定，再選擇是否測試遠端主機</text>
+
+  <rect class="card" x="55" y="155" width="350" height="220" rx="24" fill="#dbeafe" stroke="#60a5fa"/>
+  <text x="85" y="202" class="head">1　網路介面（必要）</text>
+  <text x="85" y="242" class="code">ip -o -4 addr show ...</text>
+  <text x="85" y="282" class="body">至少一個非 loopback、UP、</text>
+  <text x="85" y="312" class="body">具有 global IPv4 的介面</text>
+  <rect x="85" y="330" width="185" height="32" rx="16" fill="#bfdbfe"/>
+  <text x="105" y="352" class="small">例：eth0 192.0.2.10</text>
+
+  <path class="arrow" d="M405 265 L500 265"/>
+  <rect class="card" x="515" y="155" width="350" height="220" rx="24" fill="#ede9fe" stroke="#a78bfa"/>
+  <text x="545" y="202" class="head">2　預設路由（必要）</text>
+  <text x="545" y="242" class="code">ip -4 route show default</text>
+  <text x="545" y="282" class="body">系統知道外部封包應該</text>
+  <text x="545" y="312" class="body">交給哪個閘道與介面</text>
+  <rect x="545" y="330" width="250" height="32" rx="16" fill="#ddd6fe"/>
+  <text x="565" y="352" class="small">例：via 192.0.2.1 dev eth0</text>
+
+  <path class="arrow" d="M865 265 L960 265"/>
+  <rect class="card" x="975" y="155" width="370" height="220" rx="24" fill="#fef3c7" stroke="#f59e0b" stroke-dasharray="10 7"/>
+  <text x="1005" y="202" class="head">3　Ping 主機（選擇性）</text>
+  <text x="1005" y="242" class="code">ping -4 -c 1 -W 2 host</text>
+  <text x="1005" y="282" class="body">只有提供 host 才執行</text>
+  <text x="1005" y="312" class="body">避免 ICMP 被擋造成誤判</text>
+  <rect x="1005" y="330" width="205" height="32" rx="16" fill="#fde68a"/>
+  <text x="1025" y="352" class="small">None → 完全不執行</text>
+
+  <path class="arrow" d="M690 375 L690 470"/>
+  <rect class="card" x="350" y="485" width="680" height="135" rx="24" fill="#ffffff" stroke="#94a3b8"/>
+  <text x="390" y="530" class="head">彙整全部已設定的檢查證據</text>
+  <text x="390" y="568" class="body">固定順序：介面 → 路由 → 選擇性 Ping</text>
+  <text x="390" y="598" class="small">即使前一層失敗，仍完成其他已設定的唯讀檢查</text>
+
+  <path class="arrow" d="M570 620 C570 670 430 680 430 720"/>
+  <path class="arrow" d="M810 620 C810 670 970 680 970 720"/>
+  <rect class="card" x="205" y="720" width="450" height="95" rx="24" fill="#dcfce7" stroke="#4ade80"/>
+  <text x="245" y="765" class="head" fill="#166534">PASS</text>
+  <text x="245" y="795" class="body">必要層存在，且指定的 host 可達</text>
+  <rect class="card" x="745" y="720" width="450" height="95" rx="24" fill="#fee2e2" stroke="#f87171"/>
+  <text x="785" y="765" class="head" fill="#991b1b">FAIL + reason</text>
+  <text x="785" y="795" class="body">缺少資源、無回應、逾時或輸出損壞</text>
+</svg>
