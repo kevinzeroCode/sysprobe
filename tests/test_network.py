@@ -209,3 +209,84 @@ def test_validate_network_applies_mandatory_local_policy(
         ping_command_result=None,
     )
     assert calls == [INTERFACE_COMMAND, ROUTE_COMMAND]
+
+
+@pytest.mark.parametrize(
+    "host",
+    ["192.0.2.25", "example.com", "localhost", "api.example.com."],
+)
+def test_validate_network_pings_valid_host(host: str) -> None:
+    ping_command = ("ping", "-4", "-c", "1", "-W", "2", host)
+    interface_result = make_command_result(
+        INTERFACE_COMMAND,
+        stdout=ACTIVE_INTERFACE_OUTPUT,
+    )
+    route_result = make_command_result(
+        ROUTE_COMMAND,
+        stdout=DEFAULT_ROUTE_OUTPUT,
+    )
+    ping_result = make_command_result(ping_command, stdout="1 packets received")
+    executor, calls = make_executor(
+        {
+            INTERFACE_COMMAND: interface_result,
+            ROUTE_COMMAND: route_result,
+            ping_command: ping_result,
+        }
+    )
+
+    result = validate_network(host=host, command_executor=executor)
+
+    assert result == NetworkValidationResult(
+        passed=True,
+        reason=(
+            "Network has active IPv4 interface, default IPv4 route, "
+            f"and reachable host {host}"
+        ),
+        metrics=NetworkMetrics(
+            active_ipv4_interfaces=("eth0",),
+            default_route_interfaces=("eth0",),
+            ping_host=host,
+            host_reachable=True,
+        ),
+        interface_command_result=interface_result,
+        route_command_result=route_result,
+        ping_command_result=ping_result,
+    )
+    assert calls == [INTERFACE_COMMAND, ROUTE_COMMAND, ping_command]
+
+
+@pytest.mark.parametrize(
+    "host",
+    [
+        "",
+        " ",
+        " example.com",
+        "example.com ",
+        "bad host",
+        "example.com\n",
+        "-c",
+        "::1",
+        "bad_name",
+        ".example.com",
+        "example..com",
+        "bad-.example",
+        f"{'a' * 64}.example",
+        "a" * 254,
+        123,
+        True,
+    ],
+)
+def test_validate_network_rejects_invalid_host_before_execution(
+    host: object,
+) -> None:
+    def unexpected_executor(_command: Sequence[str]) -> CommandResult:
+        raise AssertionError("invalid host must fail before command execution")
+
+    with pytest.raises(
+        ValueError,
+        match="host must be a valid IPv4 address or DNS hostname",
+    ):
+        validate_network(
+            host=host,  # type: ignore[arg-type]
+            command_executor=unexpected_executor,
+        )

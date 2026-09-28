@@ -1,12 +1,40 @@
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 import ipaddress
+import re
 
 from sysprobe.command_runner import run_command
 from sysprobe.result import CommandResult
 
 
 CommandExecutor = Callable[[Sequence[str]], CommandResult]
+
+_DNS_LABEL = re.compile(
+    r"[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?"
+)
+
+
+def _validate_ping_host(host: object) -> str | None:
+    if host is None:
+        return None
+    if not isinstance(host, str) or not host:
+        raise ValueError("host must be a valid IPv4 address or DNS hostname")
+
+    try:
+        ipaddress.IPv4Address(host)
+    except ValueError:
+        dns_name = host[:-1] if host.endswith(".") else host
+        labels = dns_name.split(".")
+        if (
+            not dns_name
+            or len(dns_name) > 253
+            or any(_DNS_LABEL.fullmatch(label) is None for label in labels)
+        ):
+            raise ValueError(
+                "host must be a valid IPv4 address or DNS hostname"
+            ) from None
+
+    return host
 
 
 def parse_active_ipv4_interfaces(output: str) -> tuple[str, ...]:
@@ -98,31 +126,48 @@ class NetworkValidationResult:
 
 def validate_network(
     *,
+    host: str | None = None,
     command_executor: CommandExecutor = run_command,
 ) -> NetworkValidationResult:
-    """Check mandatory local IPv4 interface and route layers."""
+    """Check local IPv4 layers and an optional ping host."""
 
+    ping_host = _validate_ping_host(host)
     interface_result = command_executor(
         ["ip", "-o", "-4", "addr", "show", "scope", "global", "up"]
     )
     route_result = command_executor(
         ["ip", "-4", "route", "show", "default"]
     )
+    ping_result = (
+        command_executor(
+            ["ping", "-4", "-c", "1", "-W", "2", ping_host]
+        )
+        if ping_host is not None
+        else None
+    )
+
     interfaces = parse_active_ipv4_interfaces(interface_result.stdout)
     routes = parse_default_route_interfaces(route_result.stdout)
+    host_reachable = ping_result.exit_code == 0 if ping_result else None
     failures: list[str] = []
 
     if not interfaces:
         failures.append("no active global IPv4 interface")
     if not routes:
         failures.append("no default IPv4 route")
+    if host_reachable is False:
+        failures.append(f"host {ping_host} is unreachable")
 
     passed = not failures
-    reason = (
-        "Network has active IPv4 interface and default IPv4 route"
-        if passed
-        else "Network check failed: " + "; ".join(failures)
-    )
+    if passed and ping_host is None:
+        reason = "Network has active IPv4 interface and default IPv4 route"
+    elif passed:
+        reason = (
+            "Network has active IPv4 interface, default IPv4 route, "
+            f"and reachable host {ping_host}"
+        )
+    else:
+        reason = "Network check failed: " + "; ".join(failures)
 
     return NetworkValidationResult(
         passed=passed,
@@ -130,10 +175,10 @@ def validate_network(
         metrics=NetworkMetrics(
             active_ipv4_interfaces=interfaces,
             default_route_interfaces=routes,
-            ping_host=None,
-            host_reachable=None,
+            ping_host=ping_host,
+            host_reachable=host_reachable,
         ),
         interface_command_result=interface_result,
         route_command_result=route_result,
-        ping_command_result=None,
+        ping_command_result=ping_result,
     )
