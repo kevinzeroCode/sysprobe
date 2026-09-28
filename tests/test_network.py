@@ -41,3 +41,40 @@ def test_parse_active_ipv4_interfaces_rejects_malformed_records(
 
     with pytest.raises(ValueError, match="malformed IPv4 interface output"):
         parse_active_ipv4_interfaces(output)
+
+
+def test_parse_default_route_interfaces_reads_and_deduplicates() -> None:
+    from sysprobe.validators.network import parse_default_route_interfaces
+
+    output = (
+        "default via 192.0.2.1 dev eth0 proto dhcp metric 100\n"
+        "default dev ppp0 scope link metric 200\n"
+        "default via 198.51.100.1 dev eth0 proto static metric 300\n"
+    )
+
+    assert parse_default_route_interfaces(output) == ("eth0", "ppp0")
+
+
+def test_parse_default_route_interfaces_accepts_empty_output() -> None:
+    from sysprobe.validators.network import parse_default_route_interfaces
+
+    assert parse_default_route_interfaces("\n") == ()
+
+
+@pytest.mark.parametrize(
+    "output",
+    [
+        "192.0.2.0/24 dev eth0 scope link\n",
+        "default via 999.0.0.1 dev eth0\n",
+        "default via 192.0.2.1\n",
+        "default dev\n",
+        "default via dev eth0\n",
+    ],
+)
+def test_parse_default_route_interfaces_rejects_malformed_records(
+    output: str,
+) -> None:
+    from sysprobe.validators.network import parse_default_route_interfaces
+
+    with pytest.raises(ValueError, match="malformed default IPv4 route output"):
+        parse_default_route_interfaces(output)
