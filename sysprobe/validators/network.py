@@ -124,6 +124,18 @@ class NetworkValidationResult:
     ping_command_result: CommandResult | None
 
 
+def _command_failure(
+    result: CommandResult,
+    *,
+    description: str,
+) -> str | None:
+    if result.timed_out:
+        return f"{description} timed out"
+    if result.exit_code != 0:
+        return f"{description} failed with exit code {result.exit_code}"
+    return None
+
+
 def validate_network(
     *,
     host: str | None = None,
@@ -146,17 +158,71 @@ def validate_network(
         else None
     )
 
-    interfaces = parse_active_ipv4_interfaces(interface_result.stdout)
-    routes = parse_default_route_interfaces(route_result.stdout)
-    host_reachable = ping_result.exit_code == 0 if ping_result else None
     failures: list[str] = []
+    data_unavailable = False
+    interfaces: tuple[str, ...] | None = None
+    routes: tuple[str, ...] | None = None
+    host_reachable: bool | None = None
 
-    if not interfaces:
-        failures.append("no active global IPv4 interface")
-    if not routes:
-        failures.append("no default IPv4 route")
-    if host_reachable is False:
-        failures.append(f"host {ping_host} is unreachable")
+    interface_failure = _command_failure(
+        interface_result,
+        description="interface command",
+    )
+    if interface_failure is not None:
+        failures.append(interface_failure)
+        data_unavailable = True
+    else:
+        try:
+            interfaces = parse_active_ipv4_interfaces(interface_result.stdout)
+        except ValueError:
+            failures.append("malformed interface output")
+            data_unavailable = True
+        else:
+            if not interfaces:
+                failures.append("no active global IPv4 interface")
+
+    route_failure = _command_failure(
+        route_result,
+        description="route command",
+    )
+    if route_failure is not None:
+        failures.append(route_failure)
+        data_unavailable = True
+    else:
+        try:
+            routes = parse_default_route_interfaces(route_result.stdout)
+        except ValueError:
+            failures.append("malformed default-route output")
+            data_unavailable = True
+        else:
+            if not routes:
+                failures.append("no default IPv4 route")
+
+    if ping_result is not None:
+        if ping_result.timed_out:
+            failures.append("ping timed out")
+            data_unavailable = True
+        elif ping_result.exit_code == 0:
+            host_reachable = True
+        elif ping_result.exit_code == 1:
+            host_reachable = False
+            failures.append(f"host {ping_host} is unreachable")
+        else:
+            failures.append(
+                f"ping failed with exit code {ping_result.exit_code}"
+            )
+            data_unavailable = True
+
+    metrics: NetworkMetrics | None = None
+    if not data_unavailable:
+        assert interfaces is not None
+        assert routes is not None
+        metrics = NetworkMetrics(
+            active_ipv4_interfaces=interfaces,
+            default_route_interfaces=routes,
+            ping_host=ping_host,
+            host_reachable=host_reachable,
+        )
 
     passed = not failures
     if passed and ping_host is None:
@@ -172,12 +238,7 @@ def validate_network(
     return NetworkValidationResult(
         passed=passed,
         reason=reason,
-        metrics=NetworkMetrics(
-            active_ipv4_interfaces=interfaces,
-            default_route_interfaces=routes,
-            ping_host=ping_host,
-            host_reachable=host_reachable,
-        ),
+        metrics=metrics,
         interface_command_result=interface_result,
         route_command_result=route_result,
         ping_command_result=ping_result,

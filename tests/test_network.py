@@ -290,3 +290,177 @@ def test_validate_network_rejects_invalid_host_before_execution(
             host=host,  # type: ignore[arg-type]
             command_executor=unexpected_executor,
         )
+
+
+@pytest.mark.parametrize(
+    ("layer", "broken_result", "host", "expected_cause"),
+    [
+        (
+            "interface",
+            make_command_result(
+                INTERFACE_COMMAND,
+                exit_code=None,
+                timed_out=True,
+            ),
+            None,
+            "interface command timed out",
+        ),
+        (
+            "interface",
+            make_command_result(INTERFACE_COMMAND, exit_code=2),
+            None,
+            "interface command failed with exit code 2",
+        ),
+        (
+            "interface",
+            make_command_result(INTERFACE_COMMAND, stdout="broken\n"),
+            None,
+            "malformed interface output",
+        ),
+        (
+            "route",
+            make_command_result(
+                ROUTE_COMMAND,
+                exit_code=None,
+                timed_out=True,
+            ),
+            None,
+            "route command timed out",
+        ),
+        (
+            "route",
+            make_command_result(ROUTE_COMMAND, exit_code=2),
+            None,
+            "route command failed with exit code 2",
+        ),
+        (
+            "route",
+            make_command_result(ROUTE_COMMAND, stdout="broken\n"),
+            None,
+            "malformed default-route output",
+        ),
+        (
+            "ping",
+            make_command_result(
+                ("ping", "-4", "-c", "1", "-W", "2", "example.com"),
+                exit_code=None,
+                timed_out=True,
+            ),
+            "example.com",
+            "ping timed out",
+        ),
+        (
+            "ping",
+            make_command_result(
+                ("ping", "-4", "-c", "1", "-W", "2", "example.com"),
+                exit_code=2,
+            ),
+            "example.com",
+            "ping failed with exit code 2",
+        ),
+    ],
+)
+def test_validate_network_reports_operational_or_parse_failure(
+    layer: str,
+    broken_result: CommandResult,
+    host: str | None,
+    expected_cause: str,
+) -> None:
+    ping_command = (
+        ("ping", "-4", "-c", "1", "-W", "2", host)
+        if host is not None
+        else None
+    )
+    interface_result = make_command_result(
+        INTERFACE_COMMAND,
+        stdout=ACTIVE_INTERFACE_OUTPUT,
+    )
+    route_result = make_command_result(
+        ROUTE_COMMAND,
+        stdout=DEFAULT_ROUTE_OUTPUT,
+    )
+    results = {
+        INTERFACE_COMMAND: interface_result,
+        ROUTE_COMMAND: route_result,
+    }
+
+    if layer == "interface":
+        results[INTERFACE_COMMAND] = broken_result
+    elif layer == "route":
+        results[ROUTE_COMMAND] = broken_result
+    else:
+        assert ping_command is not None
+        results[ping_command] = broken_result
+
+    executor, calls = make_executor(results)
+
+    result = validate_network(host=host, command_executor=executor)
+
+    assert result.passed is False
+    assert result.reason == f"Network check failed: {expected_cause}"
+    assert result.metrics is None
+    assert result.interface_command_result is results[INTERFACE_COMMAND]
+    assert result.route_command_result is results[ROUTE_COMMAND]
+    assert result.ping_command_result is (
+        results[ping_command] if ping_command is not None else None
+    )
+    expected_calls = [INTERFACE_COMMAND, ROUTE_COMMAND]
+    if ping_command is not None:
+        expected_calls.append(ping_command)
+    assert calls == expected_calls
+
+
+def test_validate_network_retains_metrics_for_health_failures() -> None:
+    host = "example.com"
+    ping_command = ("ping", "-4", "-c", "1", "-W", "2", host)
+    interface_result = make_command_result(INTERFACE_COMMAND)
+    route_result = make_command_result(ROUTE_COMMAND)
+    ping_result = make_command_result(ping_command, exit_code=1)
+    executor, calls = make_executor(
+        {
+            INTERFACE_COMMAND: interface_result,
+            ROUTE_COMMAND: route_result,
+            ping_command: ping_result,
+        }
+    )
+
+    result = validate_network(host=host, command_executor=executor)
+
+    assert result.reason == (
+        "Network check failed: no active global IPv4 interface; "
+        "no default IPv4 route; host example.com is unreachable"
+    )
+    assert result.metrics == NetworkMetrics(
+        active_ipv4_interfaces=(),
+        default_route_interfaces=(),
+        ping_host=host,
+        host_reachable=False,
+    )
+    assert calls == [INTERFACE_COMMAND, ROUTE_COMMAND, ping_command]
+
+
+def test_validate_network_reports_mixed_failures_in_stable_order() -> None:
+    host = "example.com"
+    ping_command = ("ping", "-4", "-c", "1", "-W", "2", host)
+    interface_result = make_command_result(INTERFACE_COMMAND, stdout="broken\n")
+    route_result = make_command_result(ROUTE_COMMAND)
+    ping_result = make_command_result(ping_command, exit_code=1)
+    executor, calls = make_executor(
+        {
+            INTERFACE_COMMAND: interface_result,
+            ROUTE_COMMAND: route_result,
+            ping_command: ping_result,
+        }
+    )
+
+    result = validate_network(host=host, command_executor=executor)
+
+    assert result.reason == (
+        "Network check failed: malformed interface output; "
+        "no default IPv4 route; host example.com is unreachable"
+    )
+    assert result.metrics is None
+    assert result.interface_command_result is interface_result
+    assert result.route_command_result is route_result
+    assert result.ping_command_result is ping_result
+    assert calls == [INTERFACE_COMMAND, ROUTE_COMMAND, ping_command]
