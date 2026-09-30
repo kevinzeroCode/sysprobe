@@ -29,9 +29,9 @@
   <text x="545" y="202" class="head">2　預設路由（必要）</text>
   <text x="545" y="242" class="code">ip -4 route show default</text>
   <text x="545" y="282" class="body">系統知道外部封包應該</text>
-  <text x="545" y="312" class="body">交給哪個閘道與介面</text>
+  <text x="545" y="312" class="body">交給哪個介面；閘道可省略</text>
   <rect x="545" y="330" width="250" height="32" rx="16" fill="#ddd6fe"/>
-  <text x="565" y="352" class="small">例：via 192.0.2.1 dev eth0</text>
+  <text x="565" y="352" class="small">例：default dev ppp0</text>
 
   <path class="arrow" d="M865 265 L960 265"/>
   <rect class="card" x="975" y="155" width="370" height="220" rx="24" fill="#fef3c7" stroke="#f59e0b" stroke-dasharray="10 7"/>

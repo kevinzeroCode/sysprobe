@@ -60,7 +60,7 @@ def parse_active_ipv4_interfaces(output: str) -> tuple[str, ...]:
         except (ValueError, IndexError) as error:
             raise ValueError("malformed IPv4 interface output") from error
 
-        if interface_name not in interfaces:
+        if interface_name != "lo" and interface_name not in interfaces:
             interfaces.append(interface_name)
 
     return tuple(interfaces)

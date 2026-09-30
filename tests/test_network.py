@@ -81,6 +81,15 @@ def test_parse_active_ipv4_interfaces_reads_and_deduplicates() -> None:
     assert parse_active_ipv4_interfaces(output) == ("eth0", "wlan0")
 
 
+def test_parse_active_ipv4_interfaces_excludes_linux_loopback() -> None:
+    output = (
+        "1: lo inet 192.0.2.10/24 brd 192.0.2.255 "
+        "scope global lo\\ valid_lft forever preferred_lft forever\n"
+    )
+
+    assert parse_active_ipv4_interfaces(output) == ()
+
+
 def test_parse_active_ipv4_interfaces_accepts_empty_output() -> None:
     assert parse_active_ipv4_interfaces("\n") == ()
 
