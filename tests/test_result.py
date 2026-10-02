@@ -16,12 +16,12 @@ def test_validation_status_values_are_stable() -> None:
 
 def test_command_result_defaults_to_no_launch_error() -> None:
     result = CommandResult(
-        command=("true",),
-        exit_code=0,
-        stdout="",
-        stderr="",
-        duration_seconds=0.01,
-        timed_out=False,
+        ("true",),
+        0,
+        "",
+        "",
+        0.01,
+        False,
     )
 
     assert result.error_kind is None
