@@ -5,6 +5,7 @@ import sys
 import pytest
 
 from sysprobe.command_runner import run_command
+from sysprobe.result import CommandErrorKind
 
 
 def test_run_command_captures_successful_process_output() -> None:
@@ -81,6 +82,38 @@ def test_run_command_decodes_timeout_output_using_preferred_encoding(
     assert result.stderr == ""
     assert result.exit_code is None
     assert result.timed_out is True
+
+
+@pytest.mark.parametrize(
+    ("launch_error", "expected_error_kind"),
+    [
+        (FileNotFoundError("missing"), CommandErrorKind.NOT_FOUND),
+        (PermissionError("denied"), CommandErrorKind.PERMISSION_DENIED),
+        (OSError("os failure"), CommandErrorKind.OS_ERROR),
+    ],
+)
+def test_run_command_preserves_launch_error(
+    monkeypatch: pytest.MonkeyPatch,
+    launch_error: OSError,
+    expected_error_kind: CommandErrorKind,
+) -> None:
+    command = ["diagnostic", "--version"]
+
+    def raise_launch_error(*_args: object, **_kwargs: object) -> None:
+        raise launch_error
+
+    monkeypatch.setattr(subprocess, "run", raise_launch_error)
+
+    result = run_command(command)
+
+    assert result.command == tuple(command)
+    assert result.exit_code is None
+    assert result.stdout == ""
+    assert result.stderr == ""
+    assert result.duration_seconds >= 0
+    assert result.timed_out is False
+    assert result.error_kind is expected_error_kind
+    assert result.error_message == str(launch_error)
 
 
 def test_run_command_rejects_a_string_command() -> None:
