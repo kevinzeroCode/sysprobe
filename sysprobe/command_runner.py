@@ -30,7 +30,7 @@ def _launch_error_result(
         duration_seconds=time.perf_counter() - started_at,
         timed_out=False,
         error_kind=error_kind,
-        error_message=str(error),
+        error_message=str(error) or error_kind.value,
     )
 
 

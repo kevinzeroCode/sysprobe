@@ -116,6 +116,28 @@ def test_run_command_preserves_launch_error(
     assert result.error_message == str(launch_error)
 
 
+def test_run_command_falls_back_to_error_kind_for_empty_os_error(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    command = ["diagnostic", "--version"]
+
+    def raise_empty_os_error(*_args: object, **_kwargs: object) -> None:
+        raise OSError()
+
+    monkeypatch.setattr(subprocess, "run", raise_empty_os_error)
+
+    result = run_command(command)
+
+    assert result.command == tuple(command)
+    assert result.exit_code is None
+    assert result.stdout == ""
+    assert result.stderr == ""
+    assert result.duration_seconds >= 0
+    assert result.timed_out is False
+    assert result.error_kind is CommandErrorKind.OS_ERROR
+    assert result.error_message == "os_error"
+
+
 def test_run_command_rejects_a_string_command() -> None:
     with pytest.raises(ValueError, match="non-empty sequence of arguments"):
         run_command("echo hello")

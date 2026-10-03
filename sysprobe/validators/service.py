@@ -43,7 +43,7 @@ def validate_service(
     *,
     command_executor: CommandExecutor = run_command,
 ) -> ServiceValidationResult:
-    """Check whether a systemd service is loaded and active."""
+    """Check whether one required systemd service is active."""
     normalized_name = normalize_service_name(service_name)
     command = [
         "systemctl",
@@ -58,7 +58,10 @@ def validate_service(
 
     if command_result.error_kind is CommandErrorKind.NOT_FOUND:
         status = ValidationStatus.UNSUPPORTED
-        reason = "Service check unsupported: systemctl executable was not found"
+        reason = (
+            f"Service check unsupported for {normalized_name}: "
+            "systemctl executable was not found"
+        )
         metrics = None
     elif command_result.error_kind is not None:
         detail = command_result.error_message or command_result.error_kind.value
@@ -85,7 +88,10 @@ def validate_service(
             for diagnostic in _SYSTEMD_UNAVAILABLE_DIAGNOSTICS
         ):
             status = ValidationStatus.UNSUPPORTED
-            reason = "Service check unsupported: systemd is unavailable"
+            reason = (
+                f"Service check unsupported for {normalized_name}: "
+                "systemd is unavailable"
+            )
         else:
             status = ValidationStatus.ERROR
             reason = (
