@@ -75,6 +75,12 @@ def make_executor(
             ServiceMetrics("not-found", "inactive", "dead"),
         ),
         (
+            "LoadState=not-found\nActiveState=active\nSubState=running\n",
+            ValidationStatus.FAIL,
+            "Required service cron.service was not found",
+            ServiceMetrics("not-found", "active", "running"),
+        ),
+        (
             "LoadState=loaded\nActiveState=inactive\nSubState=dead\n",
             ValidationStatus.FAIL,
             "Service cron.service is not active: inactive (dead)",
