@@ -1,0 +1,88 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="860" viewBox="0 0 1400 860" role="img" aria-labelledby="svg-title svg-desc">
+  <title id="svg-title">SysProbe Day 6 Service Validator</title>
+  <desc id="svg-desc">A safe service name is normalized, queried with systemctl show, strictly parsed, and classified into PASS, FAIL, ERROR, or UNSUPPORTED outcomes.</desc>
+  <defs>
+    <linearGradient id="background" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#eff8ff"/>
+      <stop offset="55%" stop-color="#f3f1ff"/>
+      <stop offset="100%" stop-color="#e9e7ff"/>
+    </linearGradient>
+    <linearGradient id="header" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#d8f0ff"/>
+      <stop offset="100%" stop-color="#e8ddff"/>
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="130%">
+      <feDropShadow dx="0" dy="5" stdDeviation="7" flood-color="#34436b" flood-opacity="0.12"/>
+    </filter>
+    <marker id="arrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">
+      <path d="M1,1 L11,6 L1,11 Z" fill="#7182b5"/>
+    </marker>
+    <style>
+      text { font-family: "Microsoft JhengHei", "Noto Sans CJK TC", "PingFang TC", sans-serif; fill: #23304f; }
+      .title { font-size: 36px; font-weight: 700; }
+      .subtitle { font-size: 21px; fill: #4c5c7d; }
+      .card-title { font-size: 24px; font-weight: 700; }
+      .line { font-size: 18px; }
+      .outcome-title { font-size: 24px; font-weight: 800; letter-spacing: 1px; }
+      .outcome-line { font-size: 18px; }
+      .footer { font-size: 22px; font-weight: 700; fill: #435384; }
+    </style>
+  </defs>
+  <rect width="1400" height="860" rx="28" fill="url(#background)"/>
+  <rect x="36" y="30" width="1328" height="116" rx="24" fill="url(#header)"/>
+  <text x="700" y="78" text-anchor="middle" class="title">SysProbe Day 6：systemd 服務驗證</text>
+  <text x="700" y="119" text-anchor="middle" class="subtitle">命令成功不等於服務健康：查詢後仍要解析狀態</text>
+
+  <g filter="url(#shadow)">
+    <rect x="48" y="188" width="390" height="250" rx="22" fill="#ffffff" stroke="#90c9ed" stroke-width="2"/>
+    <rect x="505" y="188" width="390" height="250" rx="22" fill="#ffffff" stroke="#a99be8" stroke-width="2"/>
+    <rect x="962" y="188" width="390" height="250" rx="22" fill="#ffffff" stroke="#89b9e5" stroke-width="2"/>
+  </g>
+  <path d="M445 312 H492" fill="none" stroke="#7182b5" stroke-width="5" marker-end="url(#arrow)"/>
+  <path d="M902 312 H949" fill="none" stroke="#7182b5" stroke-width="5" marker-end="url(#arrow)"/>
+
+  <g text-anchor="middle">
+    <text x="243" y="232" class="card-title">安全輸入</text>
+    <text x="243" y="278" class="line" font-weight="700">cron → cron.service</text>
+    <text x="243" y="320" class="line">拒絕路徑、空白、其他 unit</text>
+    <text x="243" y="362" class="line">不經 shell，不修改服務</text>
+
+    <text x="700" y="232" class="card-title">唯讀查詢</text>
+    <text x="700" y="278" class="line" font-weight="700">systemctl show</text>
+    <text x="700" y="320" class="line">LoadState / ActiveState</text>
+    <text x="700" y="362" class="line">SubState + CommandResult</text>
+
+    <text x="1157" y="232" class="card-title">嚴格解析</text>
+    <text x="1157" y="278" class="line">三個欄位都必須存在</text>
+    <text x="1157" y="320" class="line">缺漏、重複、損壞 → ERROR</text>
+    <text x="1157" y="362" class="line">exit code 0 仍需判斷內容</text>
+  </g>
+
+  <text x="700" y="492" text-anchor="middle" class="card-title" fill="#52628c">依查詢結果分類</text>
+  <g filter="url(#shadow)">
+    <rect x="58" y="526" width="620" height="124" rx="20" fill="#e1f7ed" stroke="#42ad7e" stroke-width="2"/>
+    <rect x="722" y="526" width="620" height="124" rx="20" fill="#fff0df" stroke="#e29b48" stroke-width="2"/>
+    <rect x="58" y="674" width="620" height="124" rx="20" fill="#ffe8eb" stroke="#d96978" stroke-width="2"/>
+    <rect x="722" y="674" width="620" height="124" rx="20" fill="#e9eaff" stroke="#7d83cf" stroke-width="2"/>
+  </g>
+  <g>
+    <text x="88" y="568" class="outcome-title" fill="#16774e">PASS</text>
+    <text x="246" y="558" class="outcome-line" font-weight="700">LoadState=loaded</text>
+    <text x="246" y="582" class="outcome-line" font-weight="700">ActiveState=active</text>
+    <text x="88" y="610" class="outcome-line">running 或 exited</text>
+
+    <text x="752" y="568" class="outcome-title" fill="#9a5a12">FAIL</text>
+    <text x="900" y="568" class="outcome-line" font-weight="700">not-found / inactive</text>
+    <text x="752" y="610" class="outcome-line">failed</text>
+    <text x="900" y="610" class="outcome-line">服務確定不符合政策</text>
+
+    <text x="88" y="716" class="outcome-title" fill="#aa3e4d">ERROR</text>
+    <text x="246" y="716" class="outcome-line" font-weight="700">timeout / permission</text>
+    <text x="88" y="758" class="outcome-line">檢查結果不可信</text>
+
+    <text x="752" y="716" class="outcome-title" fill="#5159a8">UNSUPPORTED</text>
+    <text x="978" y="716" class="outcome-line" font-weight="700">無 systemctl / systemd</text>
+    <text x="752" y="758" class="outcome-line">環境不提供這種能力</text>
+  </g>
+  <text x="700" y="838" text-anchor="middle" class="footer">先分清「服務壞了」和「檢查做不到」，才能快速排錯</text>
+</svg>

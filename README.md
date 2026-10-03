@@ -5,7 +5,9 @@ local command-execution boundary. Day 2 adds the first policy layer: a root
 filesystem disk validator with an explicit PASS/FAIL threshold. Day 3 adds a
 memory validator based on Linux available-memory semantics. Day 4 adds a CPU
 validator that normalizes Linux load average by available CPU count. Day 5
-adds a layered IPv4 network validator with an optional reachability check.
+adds a layered IPv4 network validator with an optional reachability check. Day 6
+adds a read-only systemd service validator with explicit PASS, FAIL, ERROR, and
+UNSUPPORTED outcomes.
 
 ## Day 1 behavior
 
@@ -161,6 +163,57 @@ python -m pytest tests/test_network.py -v
 ### Day 5 visual summary
 
 ![Day 5 Network Validator flow](docs/day5-network-validator-summary.svg)
+
+## Day 6 behavior
+
+`validate_service` queries one local systemd service with a read-only
+`systemctl show` command:
+
+```text
+systemctl show <name>.service --property=LoadState --property=ActiveState --property=SubState --no-pager
+```
+
+The caller may provide either `cron` or `cron.service`. The service name is
+validated before execution, and the command runs without a shell. The validator
+strictly parses the returned properties; a successful command alone does not
+prove that the service is healthy.
+
+```python
+from sysprobe.validators.service import validate_service
+
+result = validate_service("cron")
+
+print(result.status.value.upper())
+print(result.reason)
+print(result.metrics)
+```
+
+Service outcomes are:
+
+- `PASS`: the service is active.
+- `FAIL`: the service is absent, inactive, or failed.
+- `ERROR`: the check timed out, lacked permission, encountered an unexpected
+  execution problem, or received malformed output.
+- `UNSUPPORTED`: `systemctl` or a usable systemd environment is unavailable.
+
+The shared `ValidationStatus` enum gives these outcomes stable machine values
+for future CLI and JSON interfaces. Once `LoadState=not-found` is excluded,
+`LoadState=loaded` with `ActiveState=active` is `PASS` even when
+`SubState=exited`, which supports successful oneshot services.
+
+Running the real check requires Linux with systemd. Deterministic Windows unit
+tests use controlled command results and never start, stop, or modify services.
+
+Run only the Day 6 tests:
+
+```powershell
+$env:PYTEST_DISABLE_PLUGIN_AUTOLOAD='1'
+python -m pytest tests/test_service.py tests/test_result.py tests/test_command_runner.py -v
+```
+
+### Day 6 visual summary
+
+![Day 6 systemd Service Validator flow](docs/day6-service-validator-summary.svg)
 
 ## Requirements
 
