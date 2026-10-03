@@ -24,7 +24,11 @@ SERVICE_COMMAND = (
 
 
 def make_command_result(
-    *, stdout="", stderr="", exit_code=0, timed_out=False
+    *,
+    stdout: str = "",
+    stderr: str = "",
+    exit_code: int | None = 0,
+    timed_out: bool = False,
 ) -> CommandResult:
     return CommandResult(
         command=SERVICE_COMMAND,
@@ -42,6 +46,7 @@ def make_executor(
     calls: list[tuple[str, ...]] = []
 
     def execute(command: Sequence[str]) -> CommandResult:
+        assert isinstance(command, list)
         calls.append(tuple(command))
         return result
 

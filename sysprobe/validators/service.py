@@ -40,7 +40,7 @@ def validate_service(
 ) -> ServiceValidationResult:
     """Check whether a systemd service is loaded and active."""
     normalized_name = normalize_service_name(service_name)
-    command = (
+    command = [
         "systemctl",
         "show",
         normalized_name,
@@ -48,7 +48,7 @@ def validate_service(
         "--property=ActiveState",
         "--property=SubState",
         "--no-pager",
-    )
+    ]
     command_result = command_executor(command)
     metrics = parse_service_properties(command_result.stdout)
 
