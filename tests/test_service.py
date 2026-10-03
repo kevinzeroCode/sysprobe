@@ -1,10 +1,119 @@
+from collections.abc import Callable, Sequence
+
 import pytest
 
+from sysprobe.result import CommandResult, ValidationStatus
 from sysprobe.validators.service import (
     ServiceMetrics,
+    ServiceValidationResult,
     normalize_service_name,
     parse_service_properties,
+    validate_service,
 )
+
+
+SERVICE_COMMAND = (
+    "systemctl",
+    "show",
+    "cron.service",
+    "--property=LoadState",
+    "--property=ActiveState",
+    "--property=SubState",
+    "--no-pager",
+)
+
+
+def make_command_result(
+    *, stdout="", stderr="", exit_code=0, timed_out=False
+) -> CommandResult:
+    return CommandResult(
+        command=SERVICE_COMMAND,
+        exit_code=exit_code,
+        stdout=stdout,
+        stderr=stderr,
+        duration_seconds=0.01,
+        timed_out=timed_out,
+    )
+
+
+def make_executor(
+    result: CommandResult,
+) -> tuple[list[tuple[str, ...]], Callable[[Sequence[str]], CommandResult]]:
+    calls: list[tuple[str, ...]] = []
+
+    def execute(command: Sequence[str]) -> CommandResult:
+        calls.append(tuple(command))
+        return result
+
+    return calls, execute
+
+
+@pytest.mark.parametrize(
+    ("output", "status", "reason", "metrics"),
+    [
+        (
+            "LoadState=loaded\nActiveState=active\nSubState=running\n",
+            ValidationStatus.PASS,
+            "Service cron.service is active (running)",
+            ServiceMetrics("loaded", "active", "running"),
+        ),
+        (
+            "LoadState=loaded\nActiveState=active\nSubState=exited\n",
+            ValidationStatus.PASS,
+            "Service cron.service is active (exited)",
+            ServiceMetrics("loaded", "active", "exited"),
+        ),
+        (
+            "LoadState=not-found\nActiveState=inactive\nSubState=dead\n",
+            ValidationStatus.FAIL,
+            "Required service cron.service was not found",
+            ServiceMetrics("not-found", "inactive", "dead"),
+        ),
+        (
+            "LoadState=loaded\nActiveState=inactive\nSubState=dead\n",
+            ValidationStatus.FAIL,
+            "Service cron.service is not active: inactive (dead)",
+            ServiceMetrics("loaded", "inactive", "dead"),
+        ),
+        (
+            "LoadState=loaded\nActiveState=failed\nSubState=failed\n",
+            ValidationStatus.FAIL,
+            "Service cron.service is not active: failed (failed)",
+            ServiceMetrics("loaded", "failed", "failed"),
+        ),
+    ],
+)
+def test_validate_service_classifies_trustworthy_properties(
+    output: str,
+    status: ValidationStatus,
+    reason: str,
+    metrics: ServiceMetrics,
+) -> None:
+    command_result = make_command_result(stdout=output)
+    calls, executor = make_executor(command_result)
+
+    result = validate_service("cron", command_executor=executor)
+
+    assert result == ServiceValidationResult(
+        status=status,
+        reason=reason,
+        service_name="cron.service",
+        metrics=metrics,
+        command_result=command_result,
+    )
+    assert calls == [SERVICE_COMMAND]
+
+
+def test_validate_service_rejects_invalid_name_before_execution() -> None:
+    command_result = make_command_result()
+    calls, executor = make_executor(command_result)
+
+    with pytest.raises(
+        ValueError, match="service_name must be a safe systemd service name"
+    ):
+        validate_service("../cron", command_executor=executor)
+
+    assert calls == []
 
 
 @pytest.mark.parametrize(

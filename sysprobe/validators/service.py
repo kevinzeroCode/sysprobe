@@ -1,5 +1,9 @@
 from dataclasses import dataclass
+from collections.abc import Callable, Sequence
 import re
+
+from sysprobe.command_runner import run_command
+from sysprobe.result import CommandResult, ValidationStatus
 
 
 _REQUIRED_PROPERTIES = frozenset({"LoadState", "ActiveState", "SubState"})
@@ -13,6 +17,63 @@ class ServiceMetrics:
     load_state: str
     active_state: str
     sub_state: str
+
+
+CommandExecutor = Callable[[Sequence[str]], CommandResult]
+
+
+@dataclass(frozen=True, slots=True)
+class ServiceValidationResult:
+    """A service health classification with the evidence used to make it."""
+
+    status: ValidationStatus
+    reason: str
+    service_name: str
+    metrics: ServiceMetrics | None
+    command_result: CommandResult
+
+
+def validate_service(
+    service_name: str,
+    *,
+    command_executor: CommandExecutor = run_command,
+) -> ServiceValidationResult:
+    """Check whether a systemd service is loaded and active."""
+    normalized_name = normalize_service_name(service_name)
+    command = (
+        "systemctl",
+        "show",
+        normalized_name,
+        "--property=LoadState",
+        "--property=ActiveState",
+        "--property=SubState",
+        "--no-pager",
+    )
+    command_result = command_executor(command)
+    metrics = parse_service_properties(command_result.stdout)
+
+    if metrics.load_state == "not-found":
+        status = ValidationStatus.FAIL
+        reason = f"Required service {normalized_name} was not found"
+    elif metrics.active_state == "active":
+        status = ValidationStatus.PASS
+        reason = (
+            f"Service {normalized_name} is active ({metrics.sub_state})"
+        )
+    else:
+        status = ValidationStatus.FAIL
+        reason = (
+            f"Service {normalized_name} is not active: "
+            f"{metrics.active_state} ({metrics.sub_state})"
+        )
+
+    return ServiceValidationResult(
+        status=status,
+        reason=reason,
+        service_name=normalized_name,
+        metrics=metrics,
+        command_result=command_result,
+    )
 
 
 def parse_service_properties(output: str) -> ServiceMetrics:
