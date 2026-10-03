@@ -64,6 +64,7 @@ def make_executor(
         (make_command_result(exit_code=None, timed_out=True), ValidationStatus.ERROR, "Service check error for cron.service: systemctl timed out"),
         (make_command_result(exit_code=None, error_kind=CommandErrorKind.PERMISSION_DENIED, error_message="permission denied"), ValidationStatus.ERROR, "Service check error for cron.service: systemctl could not start: permission denied"),
         (make_command_result(exit_code=None, error_kind=CommandErrorKind.OS_ERROR, error_message="operating system error"), ValidationStatus.ERROR, "Service check error for cron.service: systemctl could not start: operating system error"),
+        (make_command_result(exit_code=None, error_kind=CommandErrorKind.OS_ERROR), ValidationStatus.ERROR, "Service check error for cron.service: systemctl could not start: os_error"),
         (make_command_result(exit_code=1, stderr="System has not been booted with systemd as init system"), ValidationStatus.UNSUPPORTED, "Service check unsupported: systemd is unavailable"),
         (make_command_result(exit_code=1, stderr="Failed to connect to bus: Host is down"), ValidationStatus.UNSUPPORTED, "Service check unsupported: systemd is unavailable"),
         (make_command_result(exit_code=1, stderr="Failed to connect to bus: No such file or directory"), ValidationStatus.UNSUPPORTED, "Service check unsupported: systemd is unavailable"),
