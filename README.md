@@ -197,7 +197,8 @@ Service outcomes are:
 - `UNSUPPORTED`: `systemctl` or a usable systemd environment is unavailable.
 
 The shared `ValidationStatus` enum gives these outcomes stable machine values
-for future CLI and JSON interfaces. `ActiveState=active` remains `PASS` when
+for future CLI and JSON interfaces. Once `LoadState=not-found` is excluded,
+`LoadState=loaded` with `ActiveState=active` is `PASS` even when
 `SubState=exited`, which supports successful oneshot services.
 
 Running the real check requires Linux with systemd. Deterministic Windows unit

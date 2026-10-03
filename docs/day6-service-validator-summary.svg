@@ -67,7 +67,8 @@
   </g>
   <g>
     <text x="88" y="568" class="outcome-title" fill="#16774e">PASS</text>
-    <text x="246" y="568" class="outcome-line" font-weight="700">ActiveState=active</text>
+    <text x="246" y="558" class="outcome-line" font-weight="700">LoadState=loaded</text>
+    <text x="246" y="582" class="outcome-line" font-weight="700">ActiveState=active</text>
     <text x="88" y="610" class="outcome-line">running 或 exited</text>
 
     <text x="752" y="568" class="outcome-title" fill="#9a5a12">FAIL</text>
