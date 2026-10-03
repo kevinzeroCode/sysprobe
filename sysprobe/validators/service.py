@@ -72,6 +72,13 @@ def validate_service(
         status = ValidationStatus.ERROR
         reason = f"Service check error for {normalized_name}: systemctl timed out"
         metrics = None
+    elif command_result.exit_code is None:
+        status = ValidationStatus.ERROR
+        reason = (
+            f"Service check error for {normalized_name}: "
+            "systemctl returned no exit code"
+        )
+        metrics = None
     elif command_result.exit_code != 0:
         if any(
             diagnostic in command_result.stderr
