@@ -3,11 +3,16 @@ from collections.abc import Callable, Sequence
 import re
 
 from sysprobe.command_runner import run_command
-from sysprobe.result import CommandResult, ValidationStatus
+from sysprobe.result import CommandErrorKind, CommandResult, ValidationStatus
 
 
 _REQUIRED_PROPERTIES = frozenset({"LoadState", "ActiveState", "SubState"})
 _MALFORMED_PROPERTIES_ERROR = "malformed systemctl property output"
+_SYSTEMD_UNAVAILABLE_DIAGNOSTICS = (
+    "System has not been booted with systemd",
+    "Failed to connect to bus: Host is down",
+    "Failed to connect to bus: No such file or directory",
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -50,22 +55,62 @@ def validate_service(
         "--no-pager",
     ]
     command_result = command_executor(command)
-    metrics = parse_service_properties(command_result.stdout)
 
-    if metrics.load_state == "not-found":
-        status = ValidationStatus.FAIL
-        reason = f"Required service {normalized_name} was not found"
-    elif metrics.active_state == "active":
-        status = ValidationStatus.PASS
+    if command_result.error_kind is CommandErrorKind.NOT_FOUND:
+        status = ValidationStatus.UNSUPPORTED
+        reason = "Service check unsupported: systemctl executable was not found"
+        metrics = None
+    elif command_result.error_kind is not None:
+        detail = command_result.error_message or command_result.error_kind.value
+        status = ValidationStatus.ERROR
         reason = (
-            f"Service {normalized_name} is active ({metrics.sub_state})"
+            f"Service check error for {normalized_name}: "
+            f"systemctl could not start: {detail}"
         )
+        metrics = None
+    elif command_result.timed_out:
+        status = ValidationStatus.ERROR
+        reason = f"Service check error for {normalized_name}: systemctl timed out"
+        metrics = None
+    elif command_result.exit_code != 0:
+        if any(
+            diagnostic in command_result.stderr
+            for diagnostic in _SYSTEMD_UNAVAILABLE_DIAGNOSTICS
+        ):
+            status = ValidationStatus.UNSUPPORTED
+            reason = "Service check unsupported: systemd is unavailable"
+        else:
+            status = ValidationStatus.ERROR
+            reason = (
+                f"Service check error for {normalized_name}: "
+                f"systemctl failed with exit code {command_result.exit_code}"
+            )
+        metrics = None
     else:
-        status = ValidationStatus.FAIL
-        reason = (
-            f"Service {normalized_name} is not active: "
-            f"{metrics.active_state} ({metrics.sub_state})"
-        )
+        try:
+            metrics = parse_service_properties(command_result.stdout)
+        except ValueError:
+            status = ValidationStatus.ERROR
+            reason = (
+                f"Service check error for {normalized_name}: "
+                "malformed systemctl output"
+            )
+            metrics = None
+        else:
+            if metrics.load_state == "not-found":
+                status = ValidationStatus.FAIL
+                reason = f"Required service {normalized_name} was not found"
+            elif metrics.active_state == "active":
+                status = ValidationStatus.PASS
+                reason = (
+                    f"Service {normalized_name} is active ({metrics.sub_state})"
+                )
+            else:
+                status = ValidationStatus.FAIL
+                reason = (
+                    f"Service {normalized_name} is not active: "
+                    f"{metrics.active_state} ({metrics.sub_state})"
+                )
 
     return ServiceValidationResult(
         status=status,

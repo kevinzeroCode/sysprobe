@@ -2,7 +2,7 @@ from collections.abc import Callable, Sequence
 
 import pytest
 
-from sysprobe.result import CommandResult, ValidationStatus
+from sysprobe.result import CommandErrorKind, CommandResult, ValidationStatus
 from sysprobe.validators.service import (
     ServiceMetrics,
     ServiceValidationResult,
@@ -29,6 +29,8 @@ def make_command_result(
     stderr: str = "",
     exit_code: int | None = 0,
     timed_out: bool = False,
+    error_kind: CommandErrorKind | None = None,
+    error_message: str | None = None,
 ) -> CommandResult:
     return CommandResult(
         command=SERVICE_COMMAND,
@@ -37,6 +39,8 @@ def make_command_result(
         stderr=stderr,
         duration_seconds=0.01,
         timed_out=timed_out,
+        error_kind=error_kind,
+        error_message=error_message,
     )
 
 
@@ -51,6 +55,35 @@ def make_executor(
         return result
 
     return calls, execute
+
+
+@pytest.mark.parametrize(
+    ("command_result", "status", "reason"),
+    [
+        (make_command_result(exit_code=None, error_kind=CommandErrorKind.NOT_FOUND, error_message="systemctl was not found"), ValidationStatus.UNSUPPORTED, "Service check unsupported: systemctl executable was not found"),
+        (make_command_result(exit_code=None, timed_out=True), ValidationStatus.ERROR, "Service check error for cron.service: systemctl timed out"),
+        (make_command_result(exit_code=None, error_kind=CommandErrorKind.PERMISSION_DENIED, error_message="permission denied"), ValidationStatus.ERROR, "Service check error for cron.service: systemctl could not start: permission denied"),
+        (make_command_result(exit_code=None, error_kind=CommandErrorKind.OS_ERROR, error_message="operating system error"), ValidationStatus.ERROR, "Service check error for cron.service: systemctl could not start: operating system error"),
+        (make_command_result(exit_code=1, stderr="System has not been booted with systemd as init system"), ValidationStatus.UNSUPPORTED, "Service check unsupported: systemd is unavailable"),
+        (make_command_result(exit_code=1, stderr="Failed to connect to bus: Host is down"), ValidationStatus.UNSUPPORTED, "Service check unsupported: systemd is unavailable"),
+        (make_command_result(exit_code=1, stderr="Failed to connect to bus: No such file or directory"), ValidationStatus.UNSUPPORTED, "Service check unsupported: systemd is unavailable"),
+        (make_command_result(exit_code=1, stderr="Failed to connect to bus: Permission denied"), ValidationStatus.ERROR, "Service check error for cron.service: systemctl failed with exit code 1"),
+        (make_command_result(exit_code=5, stderr="unexpected failure"), ValidationStatus.ERROR, "Service check error for cron.service: systemctl failed with exit code 5"),
+        (make_command_result(exit_code=0, stdout="LoadState=loaded\nActiveState=active\n"), ValidationStatus.ERROR, "Service check error for cron.service: malformed systemctl output"),
+    ],
+)
+def test_validate_service_unavailable_evidence(
+    command_result: CommandResult, status: ValidationStatus, reason: str
+) -> None:
+    calls, executor = make_executor(command_result)
+    result = validate_service("cron", command_executor=executor)
+    assert isinstance(result, ServiceValidationResult)
+    assert result.status is status
+    assert result.reason == reason
+    assert result.service_name == "cron.service"
+    assert result.metrics is None
+    assert result.command_result is command_result
+    assert calls == [SERVICE_COMMAND]
 
 
 @pytest.mark.parametrize(
