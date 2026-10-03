@@ -1,4 +1,46 @@
+from dataclasses import dataclass
 import re
+
+
+_REQUIRED_PROPERTIES = frozenset({"LoadState", "ActiveState", "SubState"})
+_MALFORMED_PROPERTIES_ERROR = "malformed systemctl property output"
+
+
+@dataclass(frozen=True, slots=True)
+class ServiceMetrics:
+    """The load, active, and substate values reported for a systemd service."""
+
+    load_state: str
+    active_state: str
+    sub_state: str
+
+
+def parse_service_properties(output: str) -> ServiceMetrics:
+    """Parse the required systemctl properties regardless of line order."""
+    properties: dict[str, str] = {}
+    for line in output.splitlines():
+        if not line.strip():
+            continue
+        if "=" not in line:
+            raise ValueError(_MALFORMED_PROPERTIES_ERROR)
+
+        key, value = line.split("=", 1)
+        if (
+            key not in _REQUIRED_PROPERTIES
+            or key in properties
+            or not value.strip()
+        ):
+            raise ValueError(_MALFORMED_PROPERTIES_ERROR)
+        properties[key] = value
+
+    if properties.keys() != _REQUIRED_PROPERTIES:
+        raise ValueError(_MALFORMED_PROPERTIES_ERROR)
+
+    return ServiceMetrics(
+        load_state=properties["LoadState"],
+        active_state=properties["ActiveState"],
+        sub_state=properties["SubState"],
+    )
 
 
 _SERVICE_SUFFIX = ".service"

@@ -1,6 +1,47 @@
 import pytest
 
-from sysprobe.validators.service import normalize_service_name
+from sysprobe.validators.service import (
+    ServiceMetrics,
+    normalize_service_name,
+    parse_service_properties,
+)
+
+
+@pytest.mark.parametrize(
+    ("output", "expected"),
+    [
+        (
+            "LoadState=loaded\nActiveState=active\nSubState=running\n",
+            ServiceMetrics("loaded", "active", "running"),
+        ),
+        (
+            "SubState=exited\nLoadState=loaded\nActiveState=active\n",
+            ServiceMetrics("loaded", "active", "exited"),
+        ),
+        (
+            "LoadState=not-found\nActiveState=inactive\nSubState=dead\n",
+            ServiceMetrics("not-found", "inactive", "dead"),
+        ),
+    ],
+)
+def test_parse_service_properties_reads_required_states(output: str, expected: ServiceMetrics) -> None:
+    assert parse_service_properties(output) == expected
+
+
+@pytest.mark.parametrize(
+    "output",
+    [
+        "",
+        "LoadState=loaded\nActiveState=active\n",
+        "LoadState=loaded\nLoadState=loaded\nActiveState=active\nSubState=running\n",
+        "LoadState=\nActiveState=active\nSubState=running\n",
+        "LoadState=loaded\nActiveState=active\nSubState=running\nOther=value\n",
+        "LoadState=loaded\nActiveState=active\nSubState\n",
+    ],
+)
+def test_parse_service_properties_rejects_malformed_output(output: str) -> None:
+    with pytest.raises(ValueError, match="malformed systemctl property output"):
+        parse_service_properties(output)
 
 
 @pytest.mark.parametrize(
